@@ -59,9 +59,6 @@ set(gca, 'xlim', xlim, 'ylim',ylim)
 % Required for 20% calculation of foot size from the center of foot size
 foot_center = ylim(1) + foot_size/2;
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%initialize the COP circle
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % bar blank between vertical center line and each bar
 margin = 300;
 % initial location of each bar (bottom and center point of bar)
@@ -141,7 +138,7 @@ while ishandle(figureHandle)
         % error occurs when getting realtime grf data. Sometimes there is no data.
         if isempty(fig)
             break
-        end    
+        end
         if isempty(force{2,1}) || isempty(force{2,2})
             continue
         end
