@@ -96,6 +96,16 @@ plot([loc2_org(1)+width/2 loc2_org(1)+width/2],[ylim(1) height],'k', 'linewidth'
 
 % draw auxiliary lines
 % start_lineh = plot([xlim(1) xlim(2)], [ylim(1)+start_valuey ylim(1)+start_valuey],'black','linestyle','--', 'LineWidth',1); % 70mm
+
+p10_line_value = foot_size * 0.1;
+p10_upper_lineh = plot([loc1_org(1)-width/2 loc2_org(1)+width/2], [foot_center+p10_line_value foot_center+p10_line_value], ...
+                        'black','LineWidth', 3, 'LineStyle','--');
+p10_under_lineh = plot([loc1_org(1)-width/2 loc2_org(1)+width/2], [foot_center-p10_line_value foot_center-p10_line_value], ...
+                        'black','LineWidth', 3, 'LineStyle','--');
+text(loc1_org(1)-width/2-100, foot_center-p10_line_value, ['target value: ', ' ± 10%'], ...
+        'FontSize', 18, 'HorizontalAlignment', 'center', 'Color', 'black');
+
+
 p20_line_value = foot_size * 0.2;
 p20_upper_lineh = plot([loc1_org(1)-width/2 loc2_org(1)+width/2], [foot_center+p20_line_value foot_center+p20_line_value], ...
                         'black','LineWidth', 10);
