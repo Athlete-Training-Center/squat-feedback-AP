@@ -1,8 +1,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-%   ACL_biofeedback
+%   squat_feedback_AP
 %
-%   Code showing real time vGRF and AP COP data
+%   ~~
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -14,12 +14,11 @@ clear
 %% foot size is must 200~350
 %% option 은 어떤 테스트를 할 것인지 1) 상위 20%, 2) 하위 20%, 3) 발 센터
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-[foot_size, option] = dualInputGUI;
+[foot_size, option] = dualInputGUI_AP;
 option = convertOption(option);
 
 % Connect to QTM
 ip = '127.0.0.1';
-
 % Connects to QTM and keeps the connection alive.
 QCM('connect', ip, 'frameinfo', 'force');
 
@@ -168,7 +167,8 @@ while ishandle(figureHandle)
         % update the figure
         drawnow;
     catch exception
-        display(event)
+        disp(exception.message);
+        break
     end
 end
 

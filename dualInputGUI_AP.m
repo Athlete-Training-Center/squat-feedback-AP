@@ -1,4 +1,4 @@
-function [foot_size, option] = dualInputGUI
+function [foot_size, option] = dualInputGUI_AP
     % Initialize output variables
     foot_size = '';
     option = '';
