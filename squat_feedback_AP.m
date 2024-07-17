@@ -101,7 +101,7 @@ plot([loc2_org(1)+width/2, loc2_org(1)+width/2], [ylim(1), height], 'k', 'linewi
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % draw target line
-%% option 1 : -20%, 2 : +20%, 3 : foot center
+%% option 1 : -20%, 2 : +20%, 3 : foot center 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 p20_line_value = foot_size * 0.2;
 switch option
