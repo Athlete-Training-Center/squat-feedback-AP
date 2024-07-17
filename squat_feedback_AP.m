@@ -3,12 +3,11 @@
 %   ACL_biofeedback
 %
 %   Code showing real time vGRF and AP COP data
-% 코드 설명, 코드 목적, 기능, 작성자, 업데이트 날짜
+%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % reset setting
-% QCM('disconnect');
-% clear
+clear
 
 % Connect to QTM
 ip = '127.0.0.1';
@@ -27,43 +26,56 @@ set(gcf, 'Units', 'Normalized', 'OuterPosition', [0, 0.04, 1, 0.96]);
 % remove ticks from axes
 set(gca,'XTICK',[],'YTick',[])
 
-% setting figure size to realworld size
-xlim=[0 1200]; % 600 mm x 2
-ylim=[-200 200]; % 400 mm
-% set limits for axes
-set(gca, 'xlim',xlim, 'ylim',ylim)
+% setting figure size to real force plate size
+%           600mm      600mm
+%        ---------------------
+%      x↑         ¦           ¦
+%       o → y     ¦           ¦ 400mm
+%       ¦         ¦           ¦ 
+%        ---------------------
+% original coordinate : left end(x = 0) and center
+xlim=[0 1200];
+ylim=[-200 200]; %%%% TODO: 범위를 -200~200으로 할지 0~400으로 변환할지
 
 % center coordinate for figure size
-centerpoint = [(xlim(1)+xlim(2))/2 (ylim(1)+ylim(2))/2];
+centerpoint = [(xlim(1) + xlim(2)) / 2, (ylim(1) + ylim(2)) / 2];
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % foot size setting
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % if you want to input foot size, must use this option
-% foot_size = '270';
-foot_size = inputdlg("input the foot size (mm): ");
+foot_size = '270';
+% foot_size = inputdlg("input the foot size (mm): ");
 foot_size = str2double(foot_size);
-if foot_size <= 0 || foot_size >= 350
+if foot_size < 200 || foot_size > 350
     disp('bad size! try again');
 end
 
-% Start the graph from the bottom to the top 70mm
-start_valuey = 70;
+% Start the graph from the bottom to the top 70mm (force plate 끝~나사부분 길이 = 70mm)
+start_valuey = 70; % 70mm
+
+% set initial coordinate at 70mm from end point of force plate
+ylim = [ylim(1) + start_valuey, ylim(2)];
+
+% set limits for axes
+set(gca, 'xlim', xlim, 'ylim',ylim)
+
 % Required for 20% calculation of foot size from the center of foot size
-foot_center = ylim(2) - start_valuey - foot_size/2;
+foot_center = ylim(1) + foot_size/2;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %initialize the COP circle
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% bar blank between two bar
-margin = 300; 
-% initial location of each bar
-loc1_org = [centerpoint(1)-margin 0]; % x1 y
-loc2_org = [centerpoint(1)+margin 0]; % x2 y
+% bar blank between vertical center line and each bar
+margin = 300;
+% initial location of each bar (bottom and center point of bar)
+loc1_org = [centerpoint(1) - margin, ylim(1)]; % x1 y
+loc2_org = [centerpoint(1) + margin, ylim(1)]; % x2 y
+
 % width of each bar
 width = 100;
 % height of bars
-height = start_valuey + foot_size - 200;
+height = ylim(2) - ylim(1);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % drawing
@@ -83,14 +95,15 @@ plot([loc2_org(1)-width/2 loc2_org(1)-width/2],[ylim(1) height],'k', 'linewidth'
 plot([loc2_org(1)+width/2 loc2_org(1)+width/2],[ylim(1) height],'k', 'linewidth',1); % right
 
 % draw auxiliary lines
-start_lineh = plot([xlim(1) xlim(2)], [ylim(1)+start_valuey ylim(1)+start_valuey],'black','linestyle','--', 'LineWidth',1); % 70mm
+% start_lineh = plot([xlim(1) xlim(2)], [ylim(1)+start_valuey ylim(1)+start_valuey],'black','linestyle','--', 'LineWidth',1); % 70mm
 p20_line_value = foot_size * 0.2;
 p20_upper_lineh = plot([loc1_org(1)-width/2 loc2_org(1)+width/2], [foot_center+p20_line_value foot_center+p20_line_value], ...
                         'black','LineWidth', 10);
 p20_under_lineh = plot([loc1_org(1)-width/2 loc2_org(1)+width/2], [foot_center-p20_line_value foot_center-p20_line_value], ...
                         'black','LineWidth', 10);
-text(loc1_org(1)-width/2-50, foot_center+p20_line_value, num2str(foot_center + p20_line_value),'fontsize', 20);
-text(loc1_org(1)-width/2-50, foot_center-p20_line_value, num2str(foot_center - p20_line_value),'fontsize', 20);
+plot([loc1_org(1) - width/2, loc2_org(1) + width/2], [foot_center, foot_center], 'black', 'LineWidth', 5, 'Linestyle', '--');
+text(loc1_org(1) - width/2 - 100, foot_center + p20_line_value, '+ 20%','fontsize', 20);
+text(loc1_org(1) - width/2 - 100, foot_center - p20_line_value, '- 20%','fontsize', 20);
 cop1_value = text(loc1_org(1)-width/2-50, centerpoint(2), num2str(0), 'FontSize', 30);
 cop2_value = text(loc2_org(1)+width/2+50, centerpoint(2), num2str(0), 'FontSize', 30);
 
@@ -134,10 +147,10 @@ while ishandle(figureHandle)
         COP2Z = (force{2,1}(1,7));
         
         % Update each bar and COP line        
-        set(plot_bar1,'xdata',[loc1_org(1) loc1_org(1)],'ydata',[ylim(1)+start_valuey COP1Z])
-        set(plot_bar2,'xdata',[loc2_org(1) loc2_org(1)],'ydata',[ylim(1)+start_valuey COP2Z])
-        set(cop1_value,'string', round(COP1Z, 1), 'Position', [loc1_org(1)-width/2-100, COP1Z]);
-        set(cop2_value,'string', round(COP2Z, 1), 'Position', [loc2_org(1)+width/2+100, COP2Z]);
+        set(plot_bar1,'xdata',[loc1_org(1), loc1_org(1)],'ydata',[ylim(1), -COP1Z])
+        set(plot_bar2,'xdata',[loc2_org(1), loc2_org(1)],'ydata',[ylim(1), -COP2Z])
+        set(cop1_value,'string', round(COP1Z, 1), 'Position', [loc1_org(1)-width/2-100, -COP1Z]);
+        set(cop2_value,'string', round(COP2Z, 1), 'Position', [loc2_org(1)+width/2+100, -COP2Z]);
         
         % append cop to cop_list
         cop_list1 = [cop_list1, COP1Z];
