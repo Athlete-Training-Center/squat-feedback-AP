@@ -9,7 +9,7 @@ function [paramter, option] = MultiInputGUI(Criteria)
         case "WS"
             sentence = {'Input the body weight (kg) : ', 'Input the option (R,L) : '};
         case "AS"
-            sentence = {'Input the body weight (kg) : ', ''}; % ? 2,3번의 차이는?, 힘의 차이를 주는 건 양발 번갈아가면서 하는건가?
+            sentence = {'Input the body weight (kg) : ', 'Input the option (R,L) : '}; % ? 2,3번의 차이는?, 힘의 차이를 주는 건 양발 번갈아가면서 하는건가?
         case "ML"
             sentence = {'Input the body weight (kg) : ', ''};
     end

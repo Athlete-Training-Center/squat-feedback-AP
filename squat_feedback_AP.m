@@ -14,7 +14,7 @@ clear
 %% foot size is must 200~350
 %% option 은 어떤 테스트를 할 것인지 1) 상위 20%, 2) 하위 20%, 3) 발 센터
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-[foot_size, option] = dualInputGUI_AP;
+[foot_size, option] = MultiInputGUI("AP");
 option = convertOption(option);
 
 % Connect to QTM
