@@ -1,21 +1,13 @@
-function [paramter, option] = MultiInputGUI(Criteria)
+function [paramter, option] = InputGUI_AP
     % Initialize output variables
     paramter = '';
     option = '';
 
-    switch Criteria
-        case "AP"
-            sentence = {'Input the foot size (mm) : ', 'Input the option (1,2,3) : '};
-        case "WS"
-            sentence = {'Input the body weight (kg) : ', 'Input the option (R,L) : '};
-        case "AS"
-            sentence = {'Input the body weight (kg) : ', 'Input the option (R,L) : '}; % ? 2,3번의 차이는?, 힘의 차이를 주는 건 양발 번갈아가면서 하는건가?
-        case "ML"
-            sentence = {'Input the body weight (kg) : ', ''};
-    end
+    sentence = {'Input the foot size (mm) : ', 'Input the option (1,2,3,4,5) : '};
 
+    
     % Create a figure for the GUI
-    fig = figure('Position', [300, 300, 400, 200], 'MenuBar', 'none', 'Name', 'Dual Input GUI', 'NumberTitle', 'off', 'Resize', 'off', 'CloseRequestFcn', @closeCallback);
+    fig = figure('Position', [300, 300, 400, length(sentence) * 100], 'MenuBar', 'none', 'Name', 'Dual Input GUI', 'NumberTitle', 'off', 'Resize', 'off', 'CloseRequestFcn', @closeCallback);
 
     % Create the first input label and text box
     uicontrol('Style', 'text', 'Position', [50, 140, 200, 30], 'String', sentence{1}, 'HorizontalAlignment', 'left', 'FontSize', 10);
@@ -50,18 +42,7 @@ function [paramter, option] = MultiInputGUI(Criteria)
     function submitCallback(~, ~)
         paramter = str2double(get(paramter_Box, 'String'));
         option = get(option_Box, 'String');
-        
-        %{ Check the input values
-%        if isnan(paramter) || paramter < 30 || paramter > 200
-%            errordlg('Bad size! body weight must be between 30 and 220 kg.', 'Input Error');
-%            return;
-%        end
-        
-%        if isnan(option) || ~ismember(option, ['R','L'])
-%            errordlg('Option must be R or L', 'Input Error');
-%            return;
-%        end
-        
+                
         
         % Store the inputs in the figure's UserData property
         data.paramter = paramter;
