@@ -7,18 +7,27 @@ function [paramter, option] = InputGUI_AP
 
     
     % Create a figure for the GUI
-    fig = figure('Position', [300, 300, 400, length(sentence) * 100], 'MenuBar', 'none', 'Name', 'Dual Input GUI', 'NumberTitle', 'off', 'Resize', 'off', 'CloseRequestFcn', @closeCallback);
+    fig_size = [500, length(sentence) * 150];
+    fig = figure('Position', [500, 500, fig_size(1), fig_size(2)], 'MenuBar', 'none', 'Name', 'Dual Input GUI', 'NumberTitle', 'off', 'Resize', 'off', 'CloseRequestFcn', @closeCallback);
 
     % Create the first input label and text box
-    uicontrol('Style', 'text', 'Position', [50, 140, 200, 30], 'String', sentence{1}, 'HorizontalAlignment', 'left', 'FontSize', 10);
-    paramter_Box = uicontrol('Style', 'edit', 'Position', [250, 140, 100, 30], 'FontSize', 10);
+    text_pos = fig.Position(1) * 0.1; % 50;
+    box_pos = fig.Position(1) * 0.6; % 300;
+    text_width = 250;
+    box_width = 100;
+    height = 30;
+    uicontrol('Style', 'text', 'Position', [text_pos, 220, text_width, height], 'String', sentence{1}, 'HorizontalAlignment', 'left', 'FontSize', 14);
+    paramter_Box = uicontrol('Style', 'edit', 'Position', [box_pos, 220, box_width, height], 'FontSize', 14);
 
     % Create the second input label and text box
-    uicontrol('Style', 'text', 'Position', [50, 80, 200, 30], 'String', sentence{2}, 'HorizontalAlignment', 'left', 'FontSize', 10);
-    option_Box = uicontrol('Style', 'edit', 'Position', [250, 80, 100, 30], 'FontSize', 10);
+    uicontrol('Style', 'text', 'Position', [text_pos, 160, text_width, height], 'String', sentence{2}, 'HorizontalAlignment', 'left', 'FontSize', 14);
+    option_Box = uicontrol('Style', 'edit', 'Position', [box_pos, 160, box_width, height], 'FontSize', 14);
 
     % Create a submit button
-    uicontrol('Style', 'pushbutton', 'Position', [150, 20, 100, 40], 'String', 'Submit', 'FontSize', 10, 'Callback', @submitCallback);
+    uicontrol('Style', 'pushbutton', 'Position', [fig.Position(1) * 0.4, 50, 100, 40], 'String', 'Submit', 'FontSize', 14, 'Callback', @submitCallback);
+
+    uicontrol('Style', 'text', 'Position', [50, 20, 100, 100], 'FontSize', 12, 'HorizontalAlignment','left', ...
+                'String', {'1: +20%', '2: +10%', '3: 0%(center)', '4: -10%', '5: -20%'});
 
     % Store initial data in the figure's UserData property
     data.paramter = '';

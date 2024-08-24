@@ -26,10 +26,11 @@ QCM('connect', ip, 'frameinfo', 'force');
 % figure setting
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Create a figure window
-figureHandle = figure(1);
+% Units : [0,0,1,1] - full width size
+% OuterPosition : position of figure [left, bottom, width, height]
+% 4% below, 4% above blank
+figureHandle = figure('Units', 'Normalized', 'OuterPosition', [0, 0.04, 1, 0.96]);
 hold on
-% set the figure size
-set(gcf, 'Units', 'Normalized', 'OuterPosition', [0, 0.04, 1, 0.96]);
 % remove ticks from axes
 set(gca,'XTICK',[],'YTick',[])
 
@@ -42,7 +43,7 @@ set(gca,'XTICK',[],'YTick',[])
 %        ---------------------
 % original coordinate : left end(x = 0) and center
 xlim=[0 1200];
-ylim=[-200 200]; %%%% TODO: 범위를 -200~200으로 할지 0~400으로 변환할지
+ylim=[-200 200];
 
 % center coordinate for figure size
 centerpoint = [(xlim(1) + xlim(2)) / 2, (ylim(1) + ylim(2)) / 2];
@@ -50,7 +51,8 @@ centerpoint = [(xlim(1) + xlim(2)) / 2, (ylim(1) + ylim(2)) / 2];
 % Start the graph from the bottom to the top 70mm (force plate 끝~나사부분 길이 = 70mm)
 start_valuey = 70; % 70mm
 
-% set initial coordinate at 70mm from end point of force plate
+% set initial coordinate at 70mm from end point of force plate 
+% and set total boundary to 100 (%)
 ylim = [ylim(1) + start_valuey, ylim(1) + start_valuey + foot_size];
 
 % set limits for axes
@@ -71,7 +73,7 @@ width = 100;
 height = ylim(2) - ylim(1);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% draw outlines
+%% draw outlines
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % draw frame of figure like force plate
@@ -97,44 +99,27 @@ plot([loc2_org(1)-width/2, loc2_org(1)-width/2], [ylim(1), height], 'k', 'linewi
 plot([loc2_org(1)+width/2, loc2_org(1)+width/2], [ylim(1), height], 'k', 'linewidth', 1); % right
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% draw target line
-%% option 1 : +20%, 2 : +10%, 3 : foot center, 4 : -10%, 5 : -20%
+%% draw target line
+% option 1 : +20%, 2 : +10%, 3 : foot center, 4 : -10%, 5 : -20%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-p10_line_value = foot_size * 0.1;
-p20_line_value = foot_size * 0.2;
-switch option
-    case '하위 20%'
-        lower_target_value = foot_center - p20_line_value;
-        p20_under_lineh = plot([loc1_org(1)-width/2 loc2_org(1)+width/2], [lower_target_value, lower_target_value], 'black','LineWidth', 10);
-        text(loc1_org(1) - width/2 - 100, foot_center - p20_line_value, '하위 20%','fontsize', 20);
-
-    case '하위 10%'
-        lower_target_value = foot_center - p10_line_value;
-        p10_under_lineh = plot([loc1_org(1)-width/2 loc2_org(1)+width/2], [lower_target_value, lower_target_value], 'black','LineWidth', 10);
-        text(loc1_org(1) - width/2 - 100, lower_target_value, '하위 10%','fontsize', 20);        
-
-    case '상위 20%'
-        upper_target_value = foot_center + p20_line_value;
-        p20_upper_lineh = plot([loc1_org(1)-width/2 loc2_org(1)+width/2], [upper_target_value, upper_target_value], 'black','LineWidth', 10);
-        text(loc1_org(1) - width/2 - 100, foot_center + p20_line_value, '상위 20%','fontsize', 20);
-
-    case '상위 10%'
-        upper_target_value = foot_center + p10_line_value;
-        p10_upperr_lineh = plot([loc1_org(1)-width/2 loc2_org(1)+width/2], [upper_target_value, upper_target_value], 'black','LineWidth', 10);
-        text(loc1_org(1) - width/2 - 100, upper_target_value, '상위 10%','fontsize', 20);
-    
-    case '센터'
-        plot([loc1_org(1) - width/2, loc2_org(1) + width/2], [foot_center, foot_center], 'black', 'LineWidth', 10);
-        text(loc1_org(1) - width/2 - 150, foot_center, 'Foot Center', 'fontsize', 20);
-end
-
-% cop1_value = text(loc1_org(1)-width/2-50, centerpoint(2), num2str(0), 'FontSize', 30);
-% cop2_value = text(loc2_org(1)+width/2+50, centerpoint(2), num2str(0), 'FontSize', 30);
+target_value = drawTargetLine(width, option, foot_size, foot_center, loc1_org, loc2_org);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% COP data list for variability graph
+%% trigger to start measuring data
+% when the button clicked, start stacking data
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-cop_list = cell(1,2);
+global start_trigger;
+start_trigger = false;
+
+% Create a start button
+hButton = uicontrol('Style', 'pushbutton', 'String', 'Start', ...
+                    'Units', 'normalized', 'Position', [0.1, 0.8, 0.06, 0.06],  ...
+                    'FontSize', 13, 'Callback', @startCallback);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% COP data list for variability graph
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+cop_array = cell(1,2);
 i = 1;
 
 % Real time loop
@@ -154,10 +139,6 @@ while ishandle(figureHandle)
             continue
         end
         
-        % get GRF Z from plate 1,2
-        GRF1 = abs(force{2,2}(1,3));
-        GRF2 = abs(force{2,1}(1,3));
-        
         % get COP Z from plate 1,2
         COP1Z = (force{2,2}(1,7));
         COP2Z = (force{2,1}(1,7));
@@ -165,13 +146,13 @@ while ishandle(figureHandle)
         % Update each bar
         set(plot_bar1,'xdata',[loc1_org(1), loc1_org(1)],'ydata',[ylim(1), -COP1Z])
         set(plot_bar2,'xdata',[loc2_org(1), loc2_org(1)],'ydata',[ylim(1), -COP2Z])
-        % set(cop1_value,'string', round(COP1Z, 1), 'Position', [loc1_org(1)-width/2-100, -COP1Z]);
-        % set(cop2_value,'string', round(COP2Z, 1), 'Position', [loc2_org(1)+width/2+100, -COP2Z]);
         
-        % append cop to cop_list        
-        cop_list{1,1}{i} = -COP1Z;
-        cop_list{1,2}{i} = -COP2Z;
-        i = i + 1;
+        if start_trigger == true
+            % append cop to cop_list        
+            cop_array{1,1}{i} = -COP1Z;
+            cop_array{1,2}{i} = -COP2Z;
+            i = i + 1;
+        end
 
         % update the figure
         drawnow;
@@ -182,64 +163,48 @@ while ishandle(figureHandle)
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% noise filtering
+%% draw graph
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for i=1:2
-    old_cop_list = cell2mat(cop_list{1,i});
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % remove unnecessary data
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    new_cop_list = [];
-    start_collect = false;
-    for j = 1:length(old_cop_list)
-        if old_cop_list(j) > -5 || old_cop_list(j) < 5
-            start_collect = true;
-        end
+    % convert cell format to mat
+    cop_data = cell2mat(cop_array{1,i});
     
-        if start_collect
-            new_cop_list = [new_cop_list, old_cop_list(j)];
-        end
-    end
-
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % draw the graph
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   
-    n = length(new_cop_list);
-
-    [numRows, numCols] = size(new_cop_list);
+    % to measure some value, get size of cop data, n : stacked cop data
+    [~, n] = size(cop_data);
 
     subplot(2,1,i);
     set(gcf, 'Units', 'Normalized', 'OuterPosition', [0, 0.04, 1, 0.96]);
     
     hold on;
-
+    
     title(sprintf('Percent Difference from Target Value %.i plate (%s)', i, option), 'FontSize', 20);
     xlabel('Time ', 'FontSize', 15);
     ylabel('Difference ', 'FontSize', 15);
     grid on;
     
-    plot((1: numCols), new_cop_list, 'black');
+    % plot cop data
+    plot((1: n), cop_data, 'black');
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % calculate RMSE(Root Mean Sqaure Error)
+    %% calculate RMSE(Root Mean Sqaure Error)
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    
-    text_position_x = round(numCols / 2);
+    text_position_x = round(n / 2);
     switch option
         case {"상위 20%", "상위 10%"}
-            upper_rmse = sqrt(sum((new_cop_list - upper_target_value).^2) / n);
+            upper_rmse = sqrt(sum((cop_data - target_value).^2) / n);
             disp(['Upper Mean Percent Difference: ', num2str(upper_rmse), '%']);
-            plot([1 numCols], [upper_target_value upper_target_value], ...
+            plot([1 n], [target_value target_value], ...
                 'black','LineWidth', 1, 'LineStyle','--');
 
             % 상단 평균 퍼센트 차이 텍스트 추가
-            upper_text_position_y = upper_target_value-10;
+            upper_text_position_y = target_value-10;
             text(text_position_x, upper_text_position_y, ['RMSE: ', num2str(upper_rmse), '%'], ...
                 'FontSize', 15, 'HorizontalAlignment', 'center', 'Color', 'red');   
 
         case '센터'
-            center_rmse = sqrt(sum((new_cop_list - foot_center).^2) / n);
+            center_rmse = sqrt(sum((cop_data - foot_center).^2) / n);
             disp(['Center Mean Percent Difference: ', num2str(center_rmse), '%']);
-            plot([1 numCols], [foot_center foot_center], ...
+            plot([1 n], [foot_center foot_center], ...
                 'black','LineWidth', 1, 'LineStyle','--');
             % 센터 평균 퍼센트 차이 텍스트 추가
             center_text_position_y = foot_center+10;
@@ -247,13 +212,13 @@ for i=1:2
                 'FontSize', 15, 'HorizontalAlignment', 'center', 'Color', 'black');
 
         case {"하위 20%", "하위 10%"}
-            lower_rmse = sqrt(sum((new_cop_list - lower_target_value).^2) / n);
+            lower_rmse = sqrt(sum((cop_data - target_value).^2) / n);
             disp(['Lower Mean Percent Difference: ', num2str(lower_rmse), '%']);
-            plot([1 numCols], [lower_target_value lower_target_value], ...
+            plot([1 n], [target_value target_value], ...
                 'black','LineWidth', 1, 'LineStyle','--');
 
             % 하단 평균 퍼센트 차이 텍스트 추가
-            lower_text_position_y = lower_target_value+10;
+            lower_text_position_y = target_value+10;
             text(text_position_x, lower_text_position_y, ['RMSE: ', num2str(lower_rmse), '%'], ...
                 'FontSize', 15, 'HorizontalAlignment', 'center', 'Color', 'blue');
 
@@ -262,3 +227,47 @@ end
 
 QCM('disconnect');
 clear mex
+
+function target_value = drawTargetLine(width, option, foot_size, foot_center, loc1_org, loc2_org)
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % draw target line
+    %% option 1 : +20%, 2 : +10%, 3 : foot center, 4 : -10%, 5 : -20%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    p10_line_value = foot_size * 0.1;
+    p20_line_value = foot_size * 0.2;
+    switch option
+        case '하위 20%'
+            target_value = foot_center - p20_line_value;
+            % horizontal p20_under_line
+            plot([loc1_org(1)-width/2 loc2_org(1)+width/2], [target_value, target_value], 'black','LineWidth', 10);
+            text(loc1_org(1) - width/2 - 100, foot_center - p20_line_value, '하위 20%','fontsize', 20);
+
+        case '하위 10%'
+            target_value = foot_center - p10_line_value;
+            % horizontal p10_under_line
+            plot([loc1_org(1)-width/2 loc2_org(1)+width/2], [target_value, target_value], 'black','LineWidth', 10);
+            text(loc1_org(1) - width/2 - 100, target_value, '하위 10%','fontsize', 20);        
+
+        case '상위 20%'
+            target_value = foot_center + p20_line_value;
+            % horizontal p20_upper_line
+            plot([loc1_org(1)-width/2 loc2_org(1)+width/2], [target_value, target_value], 'black','LineWidth', 10);
+            text(loc1_org(1) - width/2 - 100, foot_center + p20_line_value, '상위 20%','fontsize', 20);
+
+        case '상위 10%'
+            target_value = foot_center + p10_line_value;
+            % horizontal p10_upper_line
+            plot([loc1_org(1)-width/2 loc2_org(1)+width/2], [target_value, target_value], 'black','LineWidth', 10);
+            text(loc1_org(1) - width/2 - 100, target_value, '상위 10%','fontsize', 20);
+        
+        case '센터'
+            % center horizontal line 
+            plot([loc1_org(1) - width/2, loc2_org(1) + width/2], [foot_center, foot_center], 'black', 'LineWidth', 10);
+            text(loc1_org(1) - width/2 - 150, foot_center, 'Foot Center', 'fontsize', 20);
+    end
+end
+
+function startCallback(~, ~)
+    global start_trigger;
+    start_trigger = true;
+end
