@@ -29,7 +29,7 @@ QCM('connect', ip, 'frameinfo', 'force');
 % Units : [0,0,1,1] - full width size
 % OuterPosition : position of figure [left, bottom, width, height]
 % 4% below, 4% above blank
-figureHandle = figure('Units', 'Normalized', 'OuterPosition', [0, 0.04, 1, 0.96]);
+figureHandle = figure('Units', 'Normalized', 'OuterPosition', [0, 0.04, 0.96, 0.96]);
 hold on
 % remove ticks from axes
 set(gca,'XTICK',[],'YTick',[])
@@ -140,8 +140,10 @@ while ishandle(figureHandle)
         end
         
         % get COP Z from plate 1,2
-        COP1Z = (force{2,2}(1,7));
-        COP2Z = (force{2,1}(1,7));
+        COP1Z = (force{2,1}(1,7)); % right
+        COP2Z = (force{2,2}(1,7)); % left
+
+        COP_net = calc_COP_net(fig, COP2Z, COP1Z, (force{2,1}(1,3)), (force{2,2}(1,3)));
         
         % Update each bar
         set(plot_bar1,'xdata',[loc1_org(1), loc1_org(1)],'ydata',[ylim(1), -COP1Z])
