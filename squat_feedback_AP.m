@@ -48,8 +48,8 @@ ylim=[-200 200];
 % center coordinate for figure size
 centerpoint = [(xlim(1) + xlim(2)) / 2, (ylim(1) + ylim(2)) / 2];
 
-% Start the graph from the bottom to the top 70mm (force plate 끝~나사부분 길이 = 70mm)
-start_valuey = 70; % 70mm
+% Start the graph from the bottom to the top 76mm (force plate 끝~나사부분 길이 = 76mm)
+start_valuey = 76; % 76mm
 
 % set initial coordinate at 70mm from end point of force plate 
 % and set total boundary to 100 (%)
@@ -85,8 +85,9 @@ plot(get(gca,'xlim'),[ylim(1) ylim(1)],'k', 'linewidth',3)
 title('Left                                                            Right','fontsize',30)
 
 % make handles for each bar to update vGRF and AP COP data
-plot_bar1 = plot([loc1_org(1)-width/2, loc1_org(1)-width/2], [ylim(1), foot_center], 'LineWidth', 90, 'Color', 'red');
-plot_bar2 = plot([loc2_org(1)+width/2, loc2_org(1)+width/2], [ylim(1), foot_center], 'LineWidth', 90, 'Color', 'blue');
+%plot_bar1 = plot([loc1_org(1)-width/2, loc1_org(1)-width/2], [ylim(1), foot_center], 'LineWidth', 90, 'Color', 'red');
+%plot_bar2 = plot([loc2_org(1)+width/2, loc2_org(1)+width/2], [ylim(1), foot_center], 'LineWidth', 90, 'Color', 'blue');
+plot_bar3 = plot([loc2_org(1), loc2_org(1)], [ylim(1), foot_center], 'LineWidth', 90, 'Color', 'black');
 
 % draw left bar frame
 plot([loc1_org(1)-width/2, loc1_org(1)+width/2],[height, height],'k', 'linewidth', 1) % top
@@ -130,24 +131,17 @@ while ishandle(figureHandle)
         % ### Fetch data from QTM
         [frameinfo,force] = QCM;
         
-        fig = get(groot, 'CurrentFigure');
-        % error occurs when getting realtime grf data. Sometimes there is no data.
-        if isempty(fig)
-            break
-        end
-        if isempty(force{2,1}) || isempty(force{2,2})
-            continue
-        end
-        
         % get COP Z from plate 1,2
-        COP1Z = (force{2,1}(1,7)); % right
-        COP2Z = (force{2,2}(1,7)); % left
-
-        COP_net = calc_COP_net(fig, COP2Z, COP1Z, (force{2,1}(1,3)), (force{2,2}(1,3)));
+        COP1Z = (force{2,2}(1,7)); % right
+        COP2Z = (force{2,1}(1,7)); % left
+        
+        COP_net = calc_COP_net(COP2Z, COP1Z, (force{2,1}(1,3)), (force{2,2}(1,3)));
         
         % Update each bar
-        set(plot_bar1,'xdata',[loc1_org(1), loc1_org(1)],'ydata',[ylim(1), -COP1Z])
-        set(plot_bar2,'xdata',[loc2_org(1), loc2_org(1)],'ydata',[ylim(1), -COP2Z])
+        %set(plot_bar1,'xdata',[loc1_org(1), loc1_org(1)],'ydata',[ylim(1), -COP1Z])
+        %set(plot_bar2,'xdata',[loc2_org(1), loc2_org(1)],'ydata',[ylim(1), -COP2Z])
+        set(plot_bar3,'xdata',[centerpoint(1), centerpoint(1)],'ydata',[ylim(1), -COP_net])
+        
         
         if start_trigger == true
             % append cop to cop_list        
@@ -263,7 +257,8 @@ function target_value = drawTargetLine(width, option, foot_size, foot_center, lo
             text(loc1_org(1) - width/2 - 100, target_value, '상위 10%','fontsize', 20);
         
         case '센터'
-            % center horizontal line 
+            % center horizontal line
+            target_value = foot_center;
             plot([loc1_org(1) - width/2, loc2_org(1) + width/2], [foot_center, foot_center], 'black', 'LineWidth', 10);
             text(loc1_org(1) - width/2 - 150, foot_center, 'Foot Center', 'fontsize', 20);
     end

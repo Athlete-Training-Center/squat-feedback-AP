@@ -47,8 +47,8 @@ plate_info = {"GRFx", "GRFy", "GRFz", "", "COPx", "COPy", "COPz", ""};
 plate_data(2) = struct(); % right, left
 
 % Draw rectangles representing the feet
-left_foot = rectangle('Position', [550 + 150, 0, 150, 270], 'Curvature', [1, 1], 'EdgeColor', 'b', 'LineWidth', 2);
-right_foot = rectangle('Position', [550 - 150, 0, 150, 270], 'Curvature', [1, 1], 'EdgeColor', 'r', 'LineWidth', 2);
+right_foot = rectangle('Position', [550 + 200, 0, 150, 270], 'Curvature', [1, 1], 'EdgeColor', 'b', 'LineWidth', 2);
+left_foot = rectangle('Position', [550 - 200, 0, 150, 270], 'Curvature', [1, 1], 'EdgeColor', 'r', 'LineWidth', 2);
 
 while ishandle(figureHandle)
     try
