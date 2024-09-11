@@ -132,10 +132,10 @@ while ishandle(figureHandle)
         [frameinfo,force] = QCM;
         
         % get COP Z from plate 1,2
-        COP1Z = (force{2,2}(1,7)); % right
-        COP2Z = (force{2,1}(1,7)); % left
-        
-        COP_net = calc_COP_net(COP2Z, COP1Z, (force{2,1}(1,3)), (force{2,2}(1,3)));
+        COP1Z = (force{2,1}(1,7)); % right
+        COP2Z = (force{2,2}(1,7)); % left
+
+        COP_net = calc_COP_net(COP2Z, COP1Z, (force{2,2}(1,3)), (force{2,1}(1,3)));
         
         % Update each bar
         %set(plot_bar1,'xdata',[loc1_org(1), loc1_org(1)],'ydata',[ylim(1), -COP1Z])
