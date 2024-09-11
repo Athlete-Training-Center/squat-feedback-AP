@@ -17,6 +17,10 @@ clear
 [foot_size, option] = InputGUI_AP;
 option = convertOption(option);
 
+UserInfo = input_UserInfo();
+UserNumber = UserInfo.UserNumber;
+
+
 % Connect to QTM
 ip = '127.0.0.1';
 % Connects to QTM and keeps the connection alive.
@@ -79,31 +83,25 @@ height = ylim(2) - ylim(1);
 % draw frame of figure like force plate
 plot([0 0],get(gca,'ylim'),'k', 'linewidth',3)
 plot([xlim(2) xlim(2)],get(gca,'ylim'),'k', 'linewidth',3)
-plot([centerpoint(1) centerpoint(1)],get(gca,'ylim'),'k', 'linewidth',3)
 plot(get(gca,'xlim'),[ylim(2) ylim(2)],'k', 'linewidth',3)
 plot(get(gca,'xlim'),[ylim(1) ylim(1)],'k', 'linewidth',3)
-title('Left                                                            Right','fontsize',30)
+title('Center of Pressure(COP) about both foot','fontsize',30)
 
 % make handles for each bar to update vGRF and AP COP data
 %plot_bar1 = plot([loc1_org(1)-width/2, loc1_org(1)-width/2], [ylim(1), foot_center], 'LineWidth', 90, 'Color', 'red');
 %plot_bar2 = plot([loc2_org(1)+width/2, loc2_org(1)+width/2], [ylim(1), foot_center], 'LineWidth', 90, 'Color', 'blue');
 plot_bar3 = plot([loc2_org(1), loc2_org(1)], [ylim(1), foot_center], 'LineWidth', 90, 'Color', 'black');
 
-% draw left bar frame
-plot([loc1_org(1)-width/2, loc1_org(1)+width/2],[height, height],'k', 'linewidth', 1) % top
-plot([loc1_org(1)-width/2, loc1_org(1)-width/2],[ylim(1), height],'k', 'linewidth', 1); % left
-plot([loc1_org(1)+width/2, loc1_org(1)+width/2],[ylim(1), height],'k', 'linewidth', 1); % right
-
-% draw right bar frame
-plot([loc2_org(1)-width/2, loc2_org(1)+width/2], [height, height], 'k', 'linewidth', 1); % top
-plot([loc2_org(1)-width/2, loc2_org(1)-width/2], [ylim(1), height], 'k', 'linewidth', 1); % left
-plot([loc2_org(1)+width/2, loc2_org(1)+width/2], [ylim(1), height], 'k', 'linewidth', 1); % right
+% draw bar frame
+plot([centerpoint(1)-width/2, centerpoint(1)+width/2], [height, height], 'k', 'linewidth', 1); % top
+plot([centerpoint(1)-width/2, centerpoint(1)-width/2], [ylim(1), height], 'k', 'linewidth', 1); % left
+plot([centerpoint(1)+width/2, centerpoint(1)+width/2], [ylim(1), height], 'k', 'linewidth', 1); % right
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% draw target line
 % option 1 : +20%, 2 : +10%, 3 : foot center, 4 : -10%, 5 : -20%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-target_value = drawTargetLine(width, option, foot_size, foot_center, loc1_org, loc2_org);
+target_value = drawTargetLine(width, option, foot_size, foot_center, centerpoint);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% trigger to start measuring data
@@ -120,6 +118,8 @@ hButton = uicontrol('Style', 'pushbutton', 'String', 'Start', ...
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% COP data list for variability graph
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+plate_info = {"GRFx", "GRFy", "GRFz", "", "COPx", "COPy", "COPz", ""};
+plate_data(2) = struct();
 cop_array = cell(1,2);
 i = 1;
 
@@ -131,11 +131,19 @@ while ishandle(figureHandle)
         % ### Fetch data from QTM
         [frameinfo,force] = QCM;
         
-        % get COP Z from plate 1,2
+        % GRFx, GRFy, GRFz, ?, COPx, COPy, COPz, ? from plate 1(right),2(left)
+        for side=1:2 % right, left
+            for idx=1:length(plate_info)
+                if plate_info{idx} == ""; continue; end
+                plate_data(side).(plate_info{idx}) = (force{2,side}(1,idx));
+            end
+        end
         COP1Z = (force{2,1}(1,7)); % right
         COP2Z = (force{2,2}(1,7)); % left
-
-        COP_net = calc_COP_net(COP2Z, COP1Z, (force{2,2}(1,3)), (force{2,1}(1,3)));
+        
+        % COPz_l, COPz_r, GRFz_l, GRFz_r
+        COP_net = calc_COP_net(plate_data(2).COPz, plate_data(1).COPz, ...
+                               plate_data(2).GRFz, plate_data(1).GRFz);
         
         % Update each bar
         %set(plot_bar1,'xdata',[loc1_org(1), loc1_org(1)],'ydata',[ylim(1), -COP1Z])
@@ -157,6 +165,20 @@ while ishandle(figureHandle)
         break
     end
 end
+
+% save result data at folder named UserNumber
+dir_name = sprintf('squat-feedback-AP/%s', UserNumber);
+mkdir(dir_name);
+
+rawdata_file_name = sprintf('%s/total_force_data', dir_name);
+rawdata = cell2mat(struct2cell(plate_data));
+writematrix(rawdata, sprintf('%s.xlsx', rawdata_file_name));
+save(sprintf('%s.mat', rawdata_file_name), "rawdata");
+
+clipdata = cell2mat(cop_array);
+clipdata_file_name = sprintf('%s/clip_force_data', dir_name);
+writecell(cop_array, clipdata_file_name);
+save(clipdata_file_name, "cop_array");
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% draw graph
@@ -224,7 +246,7 @@ end
 QCM('disconnect');
 clear mex
 
-function target_value = drawTargetLine(width, option, foot_size, foot_center, loc1_org, loc2_org)
+function target_value = drawTargetLine(width, option, foot_size, foot_center, centerpoint)
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % draw target line
     %% option 1 : +20%, 2 : +10%, 3 : foot center, 4 : -10%, 5 : -20%
@@ -235,32 +257,32 @@ function target_value = drawTargetLine(width, option, foot_size, foot_center, lo
         case '하위 20%'
             target_value = foot_center - p20_line_value;
             % horizontal p20_under_line
-            plot([loc1_org(1)-width/2 loc2_org(1)+width/2], [target_value, target_value], 'black','LineWidth', 10);
-            text(loc1_org(1) - width/2 - 100, foot_center - p20_line_value, '하위 20%','fontsize', 20);
+            plot([centerpoint(1)-width/2 centerpoint(1)+width/2], [target_value, target_value], 'black','LineWidth', 10);
+            text(centerpoint(1) - width/2 - 100, foot_center - p20_line_value, '하위 20%','fontsize', 20);
 
         case '하위 10%'
             target_value = foot_center - p10_line_value;
             % horizontal p10_under_line
-            plot([loc1_org(1)-width/2 loc2_org(1)+width/2], [target_value, target_value], 'black','LineWidth', 10);
-            text(loc1_org(1) - width/2 - 100, target_value, '하위 10%','fontsize', 20);        
+            plot([centerpoint(1)-width/2 centerpoint(1)+width/2], [target_value, target_value], 'black','LineWidth', 10);
+            text(centerpoint(1) - width/2 - 100, target_value, '하위 10%','fontsize', 20);        
 
         case '상위 20%'
             target_value = foot_center + p20_line_value;
             % horizontal p20_upper_line
-            plot([loc1_org(1)-width/2 loc2_org(1)+width/2], [target_value, target_value], 'black','LineWidth', 10);
-            text(loc1_org(1) - width/2 - 100, foot_center + p20_line_value, '상위 20%','fontsize', 20);
+            plot([centerpoint(1)-width/2 centerpoint(1)+width/2], [target_value, target_value], 'black','LineWidth', 10);
+            text(centerpoint(1) - width/2 - 100, foot_center + p20_line_value, '상위 20%','fontsize', 20);
 
         case '상위 10%'
             target_value = foot_center + p10_line_value;
             % horizontal p10_upper_line
-            plot([loc1_org(1)-width/2 loc2_org(1)+width/2], [target_value, target_value], 'black','LineWidth', 10);
-            text(loc1_org(1) - width/2 - 100, target_value, '상위 10%','fontsize', 20);
+            plot([centerpoint(1)-width/2 centerpoint(1)+width/2], [target_value, target_value], 'black','LineWidth', 10);
+            text(centerpoint(1) - width/2 - 100, target_value, '상위 10%','fontsize', 20);
         
         case '센터'
             % center horizontal line
             target_value = foot_center;
-            plot([loc1_org(1) - width/2, loc2_org(1) + width/2], [foot_center, foot_center], 'black', 'LineWidth', 10);
-            text(loc1_org(1) - width/2 - 150, foot_center, 'Foot Center', 'fontsize', 20);
+            plot([centerpoint(1) - width/2, centerpoint(1) + width/2], [foot_center, foot_center], 'black', 'LineWidth', 10);
+            text(centerpoint(1) - width/2 - 150, foot_center, 'Foot Center', 'fontsize', 20);
     end
 end
 
