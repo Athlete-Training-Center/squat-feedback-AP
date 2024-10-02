@@ -1,3 +1,45 @@
+function [foot_size, option] = InputGUI_AP
+    % Create figure window
+    hFig = figure('Position',[500 500 350 250], 'MenuBar','none', 'Name', 'Dual Input GUI', 'NumberTitle','off', 'Resize','off');
+    
+    % Foot size label and input box
+    uicontrol('Style','text', 'Position',[30 160 150 20], 'String','Input the foot size (mm) :');
+    hFootSize = uicontrol('Style','edit', 'Position',[180 160 100 20]);
+    
+    % Option label and input box
+    uicontrol('Style','text', 'Position',[30 120 150 20], 'String','Input the option (1,2,3) :');
+    hOption = uicontrol('Style','edit', 'Position',[180 120 100 20]);
+    
+    % Option description
+    uicontrol('Style','text', 'Position',[30 60 300 40], 'String', sprintf('1: +15%%\n2: 0%% (center)\n3: -15%%'));
+    
+    % Submit button
+    hSubmit = uicontrol('Style','pushbutton', 'String','Submit', 'Position',[140 20 70 30], 'Callback', @SubmitCallback);
+    
+    % Wait for user input
+    uiwait(hFig);
+    
+    % Callback function for submit button
+    function SubmitCallback(~, ~)
+        foot_size = str2double(get(hFootSize, 'String'));
+        option = str2double(get(hOption, 'String'));
+        
+        % Validate inputs
+        if isnan(foot_size) || foot_size < 200 || foot_size > 350
+            errordlg('Please enter a valid foot size (200-350 mm).');
+            return;
+        end
+        if isnan(option) || option < 1 || option > 3
+            errordlg('Please enter a valid option (1, 2, or 3).');
+            return;
+        end
+        
+        % Resume execution and close figure
+        uiresume(hFig);
+        close(hFig);
+    end
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %   squat_feedback_AP
@@ -12,7 +54,7 @@ clear
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % foot size and option setting
 %% foot size is must 200 ~ 350
-%% The option is to decide which test to do 1)top 20%, 2)top 10%, 3)foot center, 4)bottom 10%, 5)bottom 20%
+%% The option is to decide which test to do 1) top 15%, 2) foot center, 3) bottom 15%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 [foot_size, option] = InputGUI_AP;
 option = convertOption(option);
@@ -62,7 +104,7 @@ ylim = [ylim(1) + start_valuey, ylim(1) + start_valuey + foot_size];
 % set limits for axes
 set(gca, 'xlim', xlim, 'ylim',ylim)
 
-% Required for 20% calculation of foot size from the center of foot size
+% Required for 15% calculation of foot size from the center of foot size
 foot_center = ylim(1) + foot_size/2;
 
 % bar blank between vertical center line and each bar
@@ -90,16 +132,16 @@ title('Center of Pressure(COP) about both foot','fontsize',30)
 % make handles for each bar to update vGRF and AP COP data
 %plot_bar1 = plot([loc1_org(1)-width/2, loc1_org(1)-width/2], [ylim(1), foot_center], 'LineWidth', 90, 'Color', 'red');
 %plot_bar2 = plot([loc2_org(1)+width/2, loc2_org(1)+width/2], [ylim(1), foot_center], 'LineWidth', 90, 'Color', 'blue');
-plot_bar3 = plot([loc2_org(1), loc2_org(1)], [ylim(1), foot_center], 'LineWidth', 90, 'Color', 'black');
+plot_bar3 = plot([loc2_org(1), loc2_org(1)], [ylim(1), foot_center], 'LineWidth', 90, 'Color', 'red');
 
 % draw bar frame
 plot([centerpoint(1)-width/2, centerpoint(1)+width/2], [height, height], 'k', 'linewidth', 1); % top
 plot([centerpoint(1)-width/2, centerpoint(1)-width/2], [ylim(1), height], 'k', 'linewidth', 1); % left
-plot([centerpoint(1)+width/2, centerpoint(1)+width/2], [ylim(1), height], 'k', 'linewidth', 1); % right
+plot([centerpoint(1)+width/2, centerpoint(1)+width/2], [ylim(1), height], 'k', 'linewidth', 1);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% draw target line
-% option 1 : +20%, 2 : +10%, 3 : foot center, 4 : -10%, 5 : -20%
+% option 1 : +15%, 2 : foot center, 3 : -15%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 target_value = drawTargetLine(width, option, foot_size, foot_center, centerpoint);
 
@@ -122,6 +164,7 @@ plate_info = {"GRFx", "GRFy", "GRFz", "", "COPx", "COPy", "COPz", ""};
 plate_data(2) = struct();
 cop_array = cell(1,2);
 i = 1;
+j = 1;
 
 % Real time loop
 while ishandle(figureHandle)
@@ -130,27 +173,33 @@ while ishandle(figureHandle)
         event = QCM('event');
         % ### Fetch data from QTM
         [frameinfo,force] = QCM;
+        try
+            a = force{2,1}(1,7);
+        catch exception
+            continue
+        end
         
         % GRFx, GRFy, GRFz, ?, COPx, COPy, COPz, ? from plate 1(right),2(left)
         for side=1:2 % right, left
             for idx=1:length(plate_info)
                 if plate_info{idx} == ""; continue; end
-                plate_data(side).(plate_info{idx}) = (force{2,side}(1,idx));
+                plate_data(j, side).(plate_info{idx}) = (force{2,side}(1,idx));
             end
         end
+
         COP1Z = (force{2,1}(1,7)); % right
         COP2Z = (force{2,2}(1,7)); % left
         
         % COPz_l, COPz_r, GRFz_l, GRFz_r
-        COP_net = calc_COP_net(plate_data(2).COPz, plate_data(1).COPz, ...
-                               plate_data(2).GRFz, plate_data(1).GRFz);
+        COP_net = calc_COP_net(plate_data(j, 2).COPz, plate_data(j, 1).COPz, ...
+                               plate_data(j, 2).GRFz, plate_data(j, 1).GRFz);
         
         % Update each bar
         %set(plot_bar1,'xdata',[loc1_org(1), loc1_org(1)],'ydata',[ylim(1), -COP1Z])
         %set(plot_bar2,'xdata',[loc2_org(1), loc2_org(1)],'ydata',[ylim(1), -COP2Z])
         set(plot_bar3,'xdata',[centerpoint(1), centerpoint(1)],'ydata',[ylim(1), -COP_net])
         
-        
+        j = j + 1;
         if start_trigger == true
             % append cop to cop_list        
             cop_array{1,1}{i} = -COP1Z;
@@ -167,18 +216,17 @@ while ishandle(figureHandle)
 end
 
 % save result data at folder named UserNumber
-dir_name = sprintf('squat-feedback-AP/%s', UserNumber);
-mkdir(dir_name);
+%dir_name = sprintf('squat-feedback-AP/%s', UserNumber);
+%mkdir(dir_name);
 
-rawdata_file_name = sprintf('%s/total_force_data', dir_name);
-rawdata = cell2mat(struct2cell(plate_data));
-writematrix(rawdata, sprintf('%s.xlsx', rawdata_file_name));
-save(sprintf('%s.mat', rawdata_file_name), "rawdata");
-
-clipdata = cell2mat(cop_array);
-clipdata_file_name = sprintf('%s/clip_force_data', dir_name);
-writecell(cop_array, clipdata_file_name);
-save(clipdata_file_name, "cop_array");
+% TODO: Plate_data 전체 저장 
+% 'time' 'lcopx', 'lcopy', 'lcopz', 'lgrfx', 'lgrfy', 'lgrfz', 'rcopx', 'rcopy', 'rcopz', 'rgrfx', 'rgrfy', 'rgrfz' 'sum_cop'
+%left_data = squeeze(plate_data(:,:,2));
+%right_data = squeeze(plate_data(:,:,1));
+%total_data = [left_data, right_data];
+%labels = {"GRFx", "GRFy", "GRFz", "COPx", "COPy", "COPz"};
+%save_file(plate_data, dir_name, "total_force_data", ["mat", "xlsx"], labels)
+%save_file(cop_array, dir_name, "clip_force_data", ["mat", "xlsx"])
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% draw graph
@@ -208,7 +256,7 @@ for i=1:2
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    
     text_position_x = round(n / 2);
     switch option
-        case {"상위 20%", "상위 10%"}
+        case "상위 15%"
             upper_rmse = sqrt(sum((cop_data - target_value).^2) / n);
             disp(['Upper Mean Percent Difference: ', num2str(upper_rmse), '%']);
             plot([1 n], [target_value target_value], ...
@@ -229,7 +277,7 @@ for i=1:2
             text(text_position_x, center_text_position_y, ['RMSE: ', num2str(center_rmse), '%'], ...
                 'FontSize', 15, 'HorizontalAlignment', 'center', 'Color', 'black');
 
-        case {"하위 20%", "하위 10%"}
+        case "하위 15%"
             lower_rmse = sqrt(sum((cop_data - target_value).^2) / n);
             disp(['Lower Mean Percent Difference: ', num2str(lower_rmse), '%']);
             plot([1 n], [target_value target_value], ...
@@ -249,34 +297,21 @@ clear mex
 function target_value = drawTargetLine(width, option, foot_size, foot_center, centerpoint)
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % draw target line
-    %% option 1 : +20%, 2 : +10%, 3 : foot center, 4 : -10%, 5 : -20%
+    %% option 1 : +15%, 2 : foot center, 3 : -15%
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    p10_line_value = foot_size * 0.1;
-    p20_line_value = foot_size * 0.2;
+    p15_line_value = foot_size * 0.15;
     switch option
-        case '하위 20%'
-            target_value = foot_center - p20_line_value;
-            % horizontal p20_under_line
+        case '하위 15%'
+            target_value = foot_center - p15_line_value;
+            % horizontal p15_under_line
             plot([centerpoint(1)-width/2 centerpoint(1)+width/2], [target_value, target_value], 'black','LineWidth', 10);
-            text(centerpoint(1) - width/2 - 100, foot_center - p20_line_value, '하위 20%','fontsize', 20);
+            text(centerpoint(1) - width/2 - 100, target_value, '하위 15%','fontsize', 20);        
 
-        case '하위 10%'
-            target_value = foot_center - p10_line_value;
-            % horizontal p10_under_line
+        case '상위 15%'
+            target_value = foot_center + p15_line_value;
+            % horizontal p15_upper_line
             plot([centerpoint(1)-width/2 centerpoint(1)+width/2], [target_value, target_value], 'black','LineWidth', 10);
-            text(centerpoint(1) - width/2 - 100, target_value, '하위 10%','fontsize', 20);        
-
-        case '상위 20%'
-            target_value = foot_center + p20_line_value;
-            % horizontal p20_upper_line
-            plot([centerpoint(1)-width/2 centerpoint(1)+width/2], [target_value, target_value], 'black','LineWidth', 10);
-            text(centerpoint(1) - width/2 - 100, foot_center + p20_line_value, '상위 20%','fontsize', 20);
-
-        case '상위 10%'
-            target_value = foot_center + p10_line_value;
-            % horizontal p10_upper_line
-            plot([centerpoint(1)-width/2 centerpoint(1)+width/2], [target_value, target_value], 'black','LineWidth', 10);
-            text(centerpoint(1) - width/2 - 100, target_value, '상위 10%','fontsize', 20);
+            text(centerpoint(1) - width/2 - 100, target_value, '상위 15%','fontsize', 20);
         
         case '센터'
             % center horizontal line
